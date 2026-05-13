@@ -1,178 +1,88 @@
+# Modificado por: Julian Cardenas
 import json
 import os
+from pathlib import Path
+from typing import List, Dict, Any
 
-# Ruta del archivo JSON donde se almacenan
-# las asesorías registradas
-RUTA_ASESORIAS = "data/asesorias.json"
+# Uso de Path para mejor manejo de rutas en diferentes SO
+RUTA_ASESORIAS = Path("data/asesorias.json")
 
+def _asegurar_directorio():
+    """Crea la carpeta de datos si no existe."""
+    RUTA_ASESORIAS.parent.mkdir(parents=True, exist_ok=True)
 
-def _leer_asesorias():
-    """
-    Lee las asesorías almacenadas en el archivo JSON.
-    """
-
-    # Verifica si el archivo existe
-    if not os.path.exists(RUTA_ASESORIAS):
+def _leer_asesorias() -> List[Dict[str, Any]]:
+    """Lee las asesorías almacenadas en el archivo JSON."""
+    if not RUTA_ASESORIAS.exists():
         return []
 
-    # Abre el archivo en modo lectura
-    with open(RUTA_ASESORIAS, "r") as file:
-        try:
-
-            # Convierte el contenido JSON a lista de Python
+    try:
+        with open(RUTA_ASESORIAS, "r", encoding="utf-8") as file:
             return json.load(file)
+    except (json.JSONDecodeError, IOError):
+        return []
 
-        except json.JSONDecodeError:
+def _guardar_asesorias(asesorias: List[Dict[str, Any]]):
+    """Guarda la lista de asesorías en el archivo JSON."""
+    _asegurar_directorio()
+    with open(RUTA_ASESORIAS, "w", encoding="utf-8") as file:
+        json.dump(asesorias, file, indent=4, ensure_ascii=False)
 
-            # Retorna lista vacía si el JSON está vacío
-            # o tiene formato inválido
-            return []
+def crear_asesoria(nombre: str, especialista: str, precio_por_sesion: float) -> Dict[str, Any]:
+    """Crea y guarda una nueva asesoría con validaciones técnicas."""
+    
+    if not nombre.strip() or not especialista.strip():
+        raise ValueError("El nombre y el especialista son campos obligatorios.")
 
-
-def _guardar_asesorias(asesorias):
-    """
-    Guarda la lista de asesorías en el archivo JSON.
-    """
-
-    # Abre el archivo en modo escritura
-    with open(RUTA_ASESORIAS, "w") as file:
-
-        # Guarda la información en formato JSON
-        # con indentación para mejor lectura
-        json.dump(asesorias, file, indent=4)
-
-
-def crear_asesoria(nombre, especialista, precio_por_sesion):
-    """
-    Crea y guarda una nueva asesoría.
-    """
-
-    # =========================
-    # Validaciones
-    # =========================
-
-    # Valida que el nombre no esté vacío
-    if not nombre or not nombre.strip():
-        raise ValueError(
-            "El nombre de la asesoría no puede estar vacío"
-        )
-
-    # Valida que el especialista no esté vacío
-    if not especialista or not especialista.strip():
-        raise ValueError(
-            "El nombre del especialista no puede estar vacío"
-        )
-
-    # Valida que el precio sea mayor a 0
     if precio_por_sesion <= 0:
-        raise ValueError(
-            "El precio por sesión debe ser mayor a 0"
-        )
+        raise ValueError("El precio por sesión debe ser un valor positivo.")
 
-    # Obtiene las asesorías existentes
     asesorias = _leer_asesorias()
 
-    # =========================
-    # Validar nombres duplicados
-    # =========================
+    # Validación de duplicados optimizada
+    if any(a["nombre"].lower() == nombre.strip().lower() for a in asesorias):
+        raise ValueError(f"La asesoría '{nombre}' ya se encuentra registrada.")
 
-    for asesoria in asesorias:
-
-        # Compara nombres ignorando mayúsculas/minúsculas
-        if asesoria["nombre"].lower() == nombre.lower():
-
-            raise ValueError(
-                "Ya existe una asesoría con ese nombre"
-            )
-
-    # Crea el diccionario de la nueva asesoría
     nueva_asesoria = {
         "nombre": nombre.strip(),
         "especialista": especialista.strip(),
-        "precio_por_sesion": precio_por_sesion
+        "precio_por_sesion": float(precio_por_sesion)
     }
 
-    # Agrega la nueva asesoría a la lista
     asesorias.append(nueva_asesoria)
-
-    # Guarda los cambios en el archivo JSON
     _guardar_asesorias(asesorias)
-
-    # Retorna la asesoría creada
     return nueva_asesoria
 
-
-def obtener_asesorias():
-    """
-    Retorna todas las asesorías registradas.
-    """
-
-    # Retorna las asesorías almacenadas
+def obtener_asesorias() -> List[Dict[str, Any]]:
+    """Retorna todas las asesorías registradas."""
     return _leer_asesorias()
 
-
-def eliminar_asesoria(indice):
-    """
-    Elimina una asesoría según su índice.
-    """
-
-    # Obtiene las asesorías registradas
+def eliminar_asesoria(indice: int):
+    """Elimina una asesoría según su posición en la lista."""
     asesorias = _leer_asesorias()
 
-    # Valida que existan asesorías
-    if not asesorias:
-        raise ValueError(
-            "No existen asesorías registradas"
-        )
+    if not (0 <= indice < len(asesorias)):
+        raise IndexError("La asesoría seleccionada no existe en los registros.")
 
-    # Valida que el índice exista
-    if indice < 0 or indice >= len(asesorias):
-        raise ValueError(
-            "La asesoría seleccionada no existe"
-        )
-
-    # Elimina la asesoría seleccionada
     asesorias.pop(indice)
-
-    # Guarda los cambios en el archivo JSON
     _guardar_asesorias(asesorias)
 
-
-def agendar_asesoria(indice, sesiones):
-    """
-    Calcula el costo de una asesoría.
-    """
-
-    # Obtiene las asesorías registradas
+def agendar_asesoria(indice: int, sesiones: int) -> Dict[str, Any]:
+    """Calcula el costo y genera el objeto de agendamiento."""
     asesorias = _leer_asesorias()
 
-    # Valida que existan asesorías
-    if not asesorias:
-        raise ValueError(
-            "No existen asesorías registradas"
-        )
+    if not (0 <= indice < len(asesorias)):
+        raise IndexError("Índice de asesoría inválido.")
 
-    # Valida que el índice exista
-    if indice < 0 or indice >= len(asesorias):
-        raise ValueError(
-            "La asesoría seleccionada no existe"
-        )
-
-    # Valida que las sesiones sean mayores a 0
     if sesiones <= 0:
-        raise ValueError(
-            "Las sesiones deben ser mayores a 0"
-        )
+        raise ValueError("La cantidad de sesiones debe ser mayor a cero.")
 
-    # Obtiene la asesoría seleccionada
     asesoria = asesorias[indice]
-
-    # Calcula el costo total
     total = sesiones * asesoria["precio_por_sesion"]
 
-    # Retorna la información del agendamiento
     return {
         "asesoria": asesoria["nombre"],
+        "especialista": asesoria["especialista"],
         "sesiones": sesiones,
-        "total": total
+        "total": float(total)
     }
