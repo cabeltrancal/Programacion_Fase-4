@@ -1,19 +1,25 @@
+# Modificado por: Julian Cardenas
 from abc import ABC, abstractmethod
 
-
-# Clase abstracta base para todos los servicios
-# Define los métodos que deben implementar
-# las clases hijas
 class Servicio(ABC):
+    """
+    Clase abstracta base para todos los servicios del sistema.
+    Define el contrato que deben seguir las clases hijas.
+    """
 
-    # Método abstracto para calcular
-    # el costo del servicio
+    def __init__(self, **kwargs):
+        """
+        Constructor base que permite recibir atributos adicionales 
+        en las clases que heredan de esta.
+        """
+        super().__init__()
+
     @abstractmethod
-    def calcular_costo(self):
+    def calcular_costo(self) -> float:
+        """Método obligatorio para calcular el costo total del servicio."""
         pass
 
-    # Método abstracto para retornar
-    # una descripción del servicio
     @abstractmethod
-    def descripcion(self):
+    def descripcion(self) -> str:
+        """Método obligatorio para retornar el resumen del servicio."""
         pass
