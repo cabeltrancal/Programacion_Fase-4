@@ -1,178 +1,88 @@
+# Modificado por: Julian Cardenas
 import json
-import os
+from pathlib import Path
+from typing import List, Dict, Any
 
-# Ruta del archivo JSON donde se almacenan
-# los equipos registrados
-RUTA_EQUIPOS = "data/equipos.json"
+# Uso de Path para mayor seguridad en el manejo de archivos
+RUTA_EQUIPOS = Path("data/equipos.json")
 
+def _asegurar_directorio():
+    """Garantiza la existencia de la carpeta de datos."""
+    RUTA_EQUIPOS.parent.mkdir(parents=True, exist_ok=True)
 
-def _leer_equipos():
-    """
-    Lee los equipos almacenados en el archivo JSON.
-    """
-
-    # Verifica si el archivo existe
-    if not os.path.exists(RUTA_EQUIPOS):
+def _leer_equipos() -> List[Dict[str, Any]]:
+    """Lee y parsea el archivo de equipos JSON."""
+    if not RUTA_EQUIPOS.exists():
         return []
 
-    # Abre el archivo en modo lectura
-    with open(RUTA_EQUIPOS, "r") as file:
-        try:
-
-            # Convierte el contenido JSON a lista de Python
+    try:
+        with open(RUTA_EQUIPOS, "r", encoding="utf-8") as file:
             return json.load(file)
+    except (json.JSONDecodeError, IOError):
+        return []
 
-        except json.JSONDecodeError:
+def _guardar_equipos(equipos: List[Dict[str, Any]]):
+    """Persiste la lista de equipos en el disco."""
+    _asegurar_directorio()
+    with open(RUTA_EQUIPOS, "w", encoding="utf-8") as file:
+        json.dump(equipos, file, indent=4, ensure_ascii=False)
 
-            # Retorna lista vacía si el JSON está vacío
-            # o tiene formato inválido
-            return []
+def crear_equipo(nombre: str, tipo: str, precio_por_dia: float) -> Dict[str, Any]:
+    """Crea un nuevo equipo con validaciones de integridad."""
+    
+    if not nombre.strip() or not tipo.strip():
+        raise ValueError("Nombre y tipo son campos requeridos.")
 
-
-def _guardar_equipos(equipos):
-    """
-    Guarda la lista de equipos en el archivo JSON.
-    """
-
-    # Abre el archivo en modo escritura
-    with open(RUTA_EQUIPOS, "w") as file:
-
-        # Guarda la información en formato JSON
-        # con indentación para mejor lectura
-        json.dump(equipos, file, indent=4)
-
-
-def crear_equipo(nombre, tipo, precio_por_dia):
-    """
-    Crea y guarda un nuevo equipo.
-    """
-
-    # =========================
-    # Validaciones
-    # =========================
-
-    # Valida que el nombre no esté vacío
-    if not nombre or not nombre.strip():
-        raise ValueError(
-            "El nombre del equipo no puede estar vacío"
-        )
-
-    # Valida que el tipo no esté vacío
-    if not tipo or not tipo.strip():
-        raise ValueError(
-            "El tipo de equipo no puede estar vacío"
-        )
-
-    # Valida que el precio sea mayor a 0
     if precio_por_dia <= 0:
-        raise ValueError(
-            "El precio por día debe ser mayor a 0"
-        )
+        raise ValueError("El precio por día debe ser un valor positivo.")
 
-    # Obtiene los equipos registrados
     equipos = _leer_equipos()
 
-    # =========================
-    # Validar nombres duplicados
-    # =========================
+    # Validación eficiente de duplicados
+    nombre_limpio = nombre.strip()
+    if any(e["nombre"].lower() == nombre_limpio.lower() for e in equipos):
+        raise ValueError(f"El equipo '{nombre_limpio}' ya existe en el inventario.")
 
-    for equipo in equipos:
-
-        # Compara nombres ignorando mayúsculas/minúsculas
-        if equipo["nombre"].lower() == nombre.lower():
-
-            raise ValueError(
-                "Ya existe un equipo con ese nombre"
-            )
-
-    # Crea el diccionario del nuevo equipo
     nuevo_equipo = {
-        "nombre": nombre.strip(),
+        "nombre": nombre_limpio,
         "tipo": tipo.strip(),
-        "precio_por_dia": precio_por_dia
+        "precio_por_dia": float(precio_por_dia)
     }
 
-    # Agrega el nuevo equipo a la lista
     equipos.append(nuevo_equipo)
-
-    # Guarda los cambios en el archivo JSON
     _guardar_equipos(equipos)
-
-    # Retorna el equipo creado
     return nuevo_equipo
 
-
-def obtener_equipos():
-    """
-    Retorna todos los equipos registrados.
-    """
-
-    # Retorna los equipos almacenados
+def obtener_equipos() -> List[Dict[str, Any]]:
+    """Obtiene la lista completa de equipos."""
     return _leer_equipos()
 
-
-def eliminar_equipo(indice):
-    """
-    Elimina un equipo según su índice.
-    """
-
-    # Obtiene los equipos registrados
+def eliminar_equipo(indice: int):
+    """Elimina un equipo según su índice en la lista."""
     equipos = _leer_equipos()
 
-    # Valida que existan equipos
-    if not equipos:
-        raise ValueError(
-            "No existen equipos registrados"
-        )
+    if not (0 <= indice < len(equipos)):
+        raise IndexError("Índice fuera de rango: El equipo no existe.")
 
-    # Valida que el índice exista
-    if indice < 0 or indice >= len(equipos):
-        raise ValueError(
-            "El equipo seleccionado no existe"
-        )
-
-    # Elimina el equipo seleccionado
     equipos.pop(indice)
-
-    # Guarda los cambios en el archivo JSON
     _guardar_equipos(equipos)
 
-
-def alquilar_equipo(indice, dias):
-    """
-    Calcula el costo del alquiler de un equipo.
-    """
-
-    # Obtiene los equipos registrados
+def alquilar_equipo(indice: int, dias: int) -> Dict[str, Any]:
+    """Procesa la lógica de alquiler y cálculo de costos."""
     equipos = _leer_equipos()
 
-    # Valida que existan equipos
-    if not equipos:
-        raise ValueError(
-            "No existen equipos registrados"
-        )
+    if not (0 <= indice < len(equipos)):
+        raise IndexError("Referencia de equipo inválida.")
 
-    # Valida que el índice exista
-    if indice < 0 or indice >= len(equipos):
-        raise ValueError(
-            "El equipo seleccionado no existe"
-        )
-
-    # Valida que los días sean mayores a 0
     if dias <= 0:
-        raise ValueError(
-            "Los días deben ser mayores a 0"
-        )
+        raise ValueError("La duración del alquiler debe ser de al menos 1 día.")
 
-    # Obtiene el equipo seleccionado
     equipo = equipos[indice]
-
-    # Calcula el costo total del alquiler
     total = dias * equipo["precio_por_dia"]
 
-    # Retorna la información del alquiler
     return {
         "equipo": equipo["nombre"],
+        "tipo": equipo["tipo"],
         "dias": dias,
-        "total": total
+        "total": float(total)
     }
