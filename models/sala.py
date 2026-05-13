@@ -1,17 +1,23 @@
+# Modificado por: Julian Cardenas
 from models.servicio import Servicio
 
 class ServicioSala(Servicio):
+    """Representa un servicio de reserva de salas por horas."""
 
-    # Inicializa un servicio de reserva de salas
-    # con cantidad de horas y precio por hora
-    def __init__(self, horas, precio_por_hora):
+    def __init__(self, horas: int, precio_por_hora: float, **kwargs):
+        # Asegura la inicialización de la clase base
+        super().__init__(**kwargs)
+        
+        if horas <= 0 or precio_por_hora < 0:
+            raise ValueError("Las horas deben ser mayores a cero y el precio no puede ser negativo.")
+            
         self.horas = horas
         self.precio_por_hora = precio_por_hora
 
-    # Calcula el costo total de la reserva
-    def calcular_costo(self):
-        return self.horas * self.precio_por_hora
+    def calcular_costo(self) -> float:
+        """Calcula el costo total de la reserva de sala."""
+        return float(self.horas * self.precio_por_hora)
 
-    # Retorna una descripción básica del servicio
-    def descripcion(self):
-        return f"Sala por {self.horas} horas"
+    def descripcion(self) -> str:
+        """Retorna una descripción del tiempo reservado."""
+        return f"Reserva de sala: {self.horas} horas."
